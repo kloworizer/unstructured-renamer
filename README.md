@@ -1,4 +1,4 @@
-# unstructured-rename
+# unstructured-renamer
 
 Sebuah alat untuk mengganti nama file dalam folder menjadi format tertentu, menambahkan nomor urut, dan menghasilkan log CSV.
 
@@ -17,8 +17,8 @@ Utilitas ini membantu Anda mengorganisir file dengan mengganti nama sesuai denga
 ## Instalasi
 
 ```
-git clone https://github.com/kloworizer/unstructured-rename.git
-cd unstructured-rename
+git clone https://github.com/kloworizer/unstructured-renamer.git
+cd unstructured-renamer
 # Ikuti petunjuk pengaturan
 ```
 
@@ -27,14 +27,14 @@ cd unstructured-rename
 Contoh dasar:
 
 ```
-unstructured-rename --folder /path/to/files --pattern "document_{seq}" --start 1
+unstructured-renamer --folder /path/to/files --pattern "document_{seq}" --start 1
 ```
 
 Untuk petunjuk penggunaan yang lebih detail, lihat [dokumentasi](docs/usage.md).
 
 ## Rilis Terbaru
 
-Versi stabil terbaru tersedia di halaman [Rilis](https://github.com/kloworizer/unstructured-rename/releases).
+Versi stabil terbaru tersedia di halaman [Rilis](https://github.com/kloworizer/unstructured-renamer/releases).
 
 ## Lisensi
 
