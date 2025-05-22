@@ -1,3 +1,5 @@
+VERSION = "0.1.0"
+
 import os
 import shutil
 import tkinter as tk
@@ -10,7 +12,7 @@ import re
 class FileRenamerApp:
     def __init__(self, master):
         self.root = master
-        self.root.title("Unstructured File Renamer")
+        self.root.title(f"Unstructured File Renamer v{VERSION}")
         self.root.geometry("600x400")
 
         # Set up directories
@@ -84,6 +86,8 @@ class FileRenamerApp:
         dir_path = filedialog.askdirectory(initialdir=self.input_dir)
         if dir_path:
             self.input_path_var.set(dir_path)
+            self.update_status(f"Direktori input diubah menjadi: {dir_path}")
+            self.update_status("Silakan klik 'Mulai Proses' untuk melanjutkan.")
 
     def update_status(self, message):
         self.status_text.insert(tk.END, message + "\n")
@@ -204,6 +208,10 @@ class FileRenamerApp:
                 rel_path = os.path.relpath(dir_path, input_path)
                 if rel_path == ".":
                     continue  # Skip the root input directory itself
+                
+                # Use the full path for display
+                full_path = os.path.abspath(dir_path)
+                self.update_status(f"Processing directory: {full_path}")
 
                 # Create corresponding directory in output
                 output_folder = os.path.join(self.output_dir, rel_path)
@@ -233,7 +241,7 @@ class FileRenamerApp:
                     shutil.copy2(src_file, dst_file)
 
                     # Store the operation for logging
-                    file_operations.append((rel_path, file, new_filename))
+                    file_operations.append((full_path, file, new_filename))
                     self.update_status(f"Mengganti nama: {file} -> {new_filename}")
                     file_count += 1
 
