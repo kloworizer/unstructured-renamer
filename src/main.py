@@ -8,9 +8,9 @@ import re
 
 
 class FileRenamerApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("File Renamer Tool")
+    def __init__(self, master):
+        self.root = master
+        self.root.title("Unstructured File Renamer")
         self.root.geometry("600x400")
 
         # Set up directories
@@ -33,14 +33,14 @@ class FileRenamerApp:
 
     def setup_ui(self):
         # Input folder selection
-        input_frame = ttk.LabelFrame(self.root, text="Input Folder")
+        input_frame = ttk.LabelFrame(self.root, text="Folder Input")
         input_frame.pack(fill="x", padx=10, pady=10)
 
         self.input_path_var = tk.StringVar(value=self.input_dir)
         ttk.Entry(input_frame, textvariable=self.input_path_var, width=50).pack(
             side="left", padx=5, pady=5
         )
-        ttk.Button(input_frame, text="Browse", command=self.browse_input).pack(
+        ttk.Button(input_frame, text="Pilih", command=self.browse_input).pack(
             side="left", padx=5, pady=5
         )
 
@@ -65,20 +65,20 @@ class FileRenamerApp:
         action_frame.pack(fill="x", padx=10, pady=10)
 
         ttk.Button(
-            action_frame, text="Start Renaming", command=self.start_renaming
+            action_frame, text="Mulai Proses", command=self.start_renaming
         ).pack(side="left", padx=5, pady=5)
-        ttk.Button(action_frame, text="Open Log File", command=self.open_log_file).pack(
+        ttk.Button(action_frame, text="Buka File Log", command=self.open_log_file).pack(
             side="left", padx=5, pady=5
         )
-        ttk.Button(action_frame, text="Exit", command=self.root.quit).pack(
+        ttk.Button(action_frame, text="Keluar", command=self.root.quit).pack(
             side="right", padx=5, pady=5
         )
 
         # Show startup status
-        self.update_status(f"Application started. Created required directories:")
+        self.update_status("Aplikasi dimulai. Direktori yang diperlukan telah dibuat.")
         self.update_status(f"Input: {self.input_dir}")
         self.update_status(f"Output: {self.output_dir}")
-        self.update_status(f"Logs: {self.log_dir}")
+        self.update_status(f"Log: {self.log_dir}")
 
     def browse_input(self):
         dir_path = filedialog.askdirectory(initialdir=self.input_dir)
@@ -111,15 +111,27 @@ class FileRenamerApp:
         logging.info(log_message)
 
     def open_log_file(self):
-        if self.log_file_path and os.path.exists(self.log_file_path):
-            os.startfile(self.log_file_path)
+        if os.path.exists(self.log_dir):
+            os.startfile(self.log_dir)
         else:
-            messagebox.showerror("Error", "No log file has been created yet!")
+            messagebox.showerror("Error", "Direktori log tidak ditemukan!")
+
+    def has_invalid_folder_names(self, input_path):
+        # Check if folders follow the required pattern (2 A-Z chars followed by 15 digits)
+        for dir_path, dirs, _ in os.walk(input_path):
+            for dir_name in dirs:
+                # Skip checking the root input directory itself
+                if dir_path == input_path:
+                    if not re.match(r'^[A-Z]{2}\d{15}$', dir_name):
+                        self.update_status(f"Format nama folder tidak valid: {dir_name}")
+                        self.update_status("Nama folder harus 2 huruf kapital diikuti 15 digit angka.")
+                        return True
+        return False
 
     def contains_compressed_files(self, input_path):
         # Define compressed file extensions
         compressed_exts = {'.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.cab', '.iso'}
-        for root, _, files in os.walk(input_path):
+        for _, _, files in os.walk(input_path):
             for file in files:
                 ext = os.path.splitext(file)[1].lower()
                 if ext in compressed_exts:
@@ -129,14 +141,34 @@ class FileRenamerApp:
     def start_renaming(self):
         input_path = self.input_path_var.get()
         if not os.path.isdir(input_path):
-            messagebox.showerror("Error", f"Input directory not found: {input_path}")
+            messagebox.showerror("Error", f"Direktori input tidak ditemukan: {input_path}")
             return
+        
+        # Check if input path contains at least one folder
+        folder_count = 0
+        for _, dirs, _ in os.walk(input_path):
+            folder_count += len(dirs)
+            break  # Only check the first level
 
+        if folder_count == 0:
+            messagebox.showerror("Error", "Direktori input harus berisi minimal 1 folder!")
+            self.update_status("Proses dibatalkan karena direktori input tidak berisi folder.")
+            return
+            
+        # Check for invalid folder names before proceeding
+        if self.has_invalid_folder_names(input_path):
+            messagebox.showerror(
+                "Format Folder Tidak Valid", 
+                "Beberapa folder tidak mengikuti format yang diperlukan (2 huruf kapital + 15 digit)."
+            )
+            self.update_status("Proses dibatalkan karena ada nama folder yang tidak valid.")
+            return
+        
         # Check for compressed files before proceeding
         if self.contains_compressed_files(input_path):
             proceed = messagebox.askyesno(
                 "Konfirmasi",
-                "Terdapat file kompresi (zip/rar/lainnya) pada folder input. yakin akan lanjut?"
+                "Terdapat file kompresi (zip/rar/lainnya) pada folder input. Yakin akan lanjut?"
             )
             if not proceed:
                 self.update_status("Proses dibatalkan oleh pengguna karena ada file kompresi.")
@@ -147,19 +179,19 @@ class FileRenamerApp:
 
         try:
             self.status_text.delete(1.0, tk.END)
-            self.update_status(f"Starting rename process from: {input_path}")
-            self.update_status(f"Results will be in: {self.output_dir}")
+            self.update_status(f"Memulai proses penggantian nama dari: {input_path}")
+            self.update_status(f"Hasil akan disimpan di: {self.output_dir}")
 
             # Count total files for progress bar
             total_files = 0
-            for root, _, files in os.walk(input_path):
+            for _, _, files in os.walk(input_path):
                 total_files += len(files)
 
             if total_files == 0:
-                self.update_status("No files found to rename.")
+                self.update_status("Tidak ada file yang ditemukan untuk diganti namanya.")
                 return
 
-            self.update_status(f"Found {total_files} files to process.")
+            self.update_status(f"Ditemukan {total_files} file untuk diproses.")
 
             # Clear output directory
             if os.path.exists(self.output_dir):
@@ -167,9 +199,9 @@ class FileRenamerApp:
             os.makedirs(self.output_dir, exist_ok=True)
 
             files_processed = 0
-            for root, dirs, files in os.walk(input_path):
+            for dir_path, _, files in os.walk(input_path):
                 # Get relative path from input directory
-                rel_path = os.path.relpath(root, input_path)
+                rel_path = os.path.relpath(dir_path, input_path)
                 if rel_path == ".":
                     continue  # Skip the root input directory itself
 
@@ -178,11 +210,11 @@ class FileRenamerApp:
                 os.makedirs(output_folder, exist_ok=True)
 
                 # Get ticket number from folder name (assumed to be the last part of folder name)
-                ticket_match = re.search(r"[A-Za-z0-9]+$", os.path.basename(root))
+                ticket_match = re.search(r"[A-Za-z0-9]+$", os.path.basename(dir_path))
                 if ticket_match:
                     ticket_num = ticket_match.group(0)
                 else:
-                    ticket_num = os.path.basename(root)  # Use folder name as is
+                    ticket_num = os.path.basename(dir_path)  # Use folder name as is
 
                 # Process files in current directory
                 file_count = 1
@@ -192,7 +224,7 @@ class FileRenamerApp:
                     progress = (files_processed / total_files) * 100
                     self.progress_var.set(progress)
 
-                    src_file = os.path.join(root, file)
+                    src_file = os.path.join(dir_path, file)
                     file_ext = os.path.splitext(file)[1]
                     new_filename = f"{ticket_num}{file_count:03d}{file_ext}"
                     dst_file = os.path.join(output_folder, new_filename)
@@ -202,7 +234,7 @@ class FileRenamerApp:
 
                     # Store the operation for logging
                     file_operations.append((rel_path, file, new_filename))
-                    self.update_status(f"Renamed: {file} -> {new_filename}")
+                    self.update_status(f"Mengganti nama: {file} -> {new_filename}")
                     file_count += 1
 
             # Only create log file and write entries after successful completion
@@ -210,14 +242,24 @@ class FileRenamerApp:
             for operation in file_operations:
                 self.log_file_operation(*operation)
 
-            self.update_status(f"Complete! {files_processed} files processed.")
+            self.update_status(f"Selesai! {files_processed} file telah diproses.")
             messagebox.showinfo(
-                "Success",
-                f"Renamed {files_processed} files successfully.\nLog file saved to: {self.log_file_path}",
+                "Sukses",
+                f"Berhasil mengganti nama {files_processed} file.\nFile log disimpan di: {self.log_file_path}",
             )
 
+        except (OSError, IOError, shutil.Error) as e:
+            error_msg = f"Error selama operasi file: {str(e)}"
+            self.update_status(error_msg)
+            messagebox.showerror("Error", error_msg)
+            # No log file is created when there's an error
+        except re.error as e:
+            error_msg = f"Error pada expresi reguler: {str(e)}"
+            self.update_status(error_msg)
+            messagebox.showerror("Error", error_msg)
         except Exception as e:
-            error_msg = f"Error during renaming: {str(e)}"
+            # Still catch other exceptions as fallback
+            error_msg = f"Error tidak terduga: {str(e)}"
             self.update_status(error_msg)
             messagebox.showerror("Error", error_msg)
             # No log file is created when there's an error

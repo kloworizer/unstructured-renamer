@@ -41,4 +41,5 @@ venv.bak/
 
 # Project specific
 input/
+logs/
 output/
