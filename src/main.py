@@ -1,4 +1,4 @@
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 import os
 import shutil
@@ -178,7 +178,6 @@ class FileRenamerApp:
                 self.update_status("Proses dibatalkan oleh pengguna karena ada file kompresi.")
                 return
 
-        # Don't initialize log file yet - only if successful
         file_operations = []  # Store operations to be logged
 
         try:
@@ -186,9 +185,13 @@ class FileRenamerApp:
             self.update_status(f"Memulai proses penggantian nama dari: {input_path}")
             self.update_status(f"Hasil akan disimpan di: {self.output_dir}")
 
-            # Count total files for progress bar
+            # Count total files for progress bar (all files under all subfolders)
             total_files = 0
-            for _, _, files in os.walk(input_path):
+            for root_dir, dirs, files in os.walk(input_path):
+                # Only count files inside valid folders (not in the root input folder)
+                rel_path = os.path.relpath(root_dir, input_path)
+                if rel_path == ".":
+                    continue
                 total_files += len(files)
 
             if total_files == 0:
@@ -203,46 +206,43 @@ class FileRenamerApp:
             os.makedirs(self.output_dir, exist_ok=True)
 
             files_processed = 0
-            for dir_path, _, files in os.walk(input_path):
-                # Get relative path from input directory
-                rel_path = os.path.relpath(dir_path, input_path)
-                if rel_path == ".":
-                    continue  # Skip the root input directory itself
-                
-                # Use the full path for display
-                full_path = os.path.abspath(dir_path)
-                self.update_status(f"Processing directory: {full_path}")
 
-                # Create corresponding directory in output
-                output_folder = os.path.join(self.output_dir, rel_path)
+            # Only process first-level folders in input_path
+            for folder_name in os.listdir(input_path):
+                folder_path = os.path.join(input_path, folder_name)
+                if not os.path.isdir(folder_path):
+                    continue
+                # Validate folder name
+                if not re.match(r'^[A-Z]{2}\d{15}$', folder_name):
+                    continue
+
+                self.update_status(f"Processing folder: {folder_path}")
+
+                # Create corresponding output folder
+                output_folder = os.path.join(self.output_dir, folder_name)
                 os.makedirs(output_folder, exist_ok=True)
 
-                # Get ticket number from folder name (assumed to be the last part of folder name)
-                ticket_match = re.search(r"[A-Za-z0-9]+$", os.path.basename(dir_path))
-                if ticket_match:
-                    ticket_num = ticket_match.group(0)
-                else:
-                    ticket_num = os.path.basename(dir_path)  # Use folder name as is
+                # Collect all files under this folder (recursively)
+                all_files = []
+                for dirpath, _, files in os.walk(folder_path):
+                    for file in files:
+                        all_files.append(os.path.join(dirpath, file))
 
-                # Process files in current directory
+                # Rename and copy files to output_folder, flattening structure
                 file_count = 1
-                for file in files:
-                    # Update progress
+                for src_file in all_files:
                     files_processed += 1
                     progress = (files_processed / total_files) * 100
                     self.progress_var.set(progress)
 
-                    src_file = os.path.join(dir_path, file)
-                    file_ext = os.path.splitext(file)[1]
-                    new_filename = f"{ticket_num}{file_count:03d}{file_ext}"
+                    file_ext = os.path.splitext(src_file)[1]
+                    new_filename = f"{folder_name}{file_count:03d}{file_ext}"
                     dst_file = os.path.join(output_folder, new_filename)
 
-                    # Copy file with new name to output location
                     shutil.copy2(src_file, dst_file)
 
-                    # Store the operation for logging
-                    file_operations.append((full_path, file, new_filename))
-                    self.update_status(f"Mengganti nama: {file} -> {new_filename}")
+                    file_operations.append((folder_path, os.path.relpath(src_file, folder_path), new_filename))
+                    self.update_status(f"Mengganti nama: {os.path.relpath(src_file, folder_path)} -> {new_filename}")
                     file_count += 1
 
             # Only create log file and write entries after successful completion
@@ -260,17 +260,14 @@ class FileRenamerApp:
             error_msg = f"Error selama operasi file: {str(e)}"
             self.update_status(error_msg)
             messagebox.showerror("Error", error_msg)
-            # No log file is created when there's an error
         except re.error as e:
             error_msg = f"Error pada expresi reguler: {str(e)}"
             self.update_status(error_msg)
             messagebox.showerror("Error", error_msg)
         except Exception as e:
-            # Still catch other exceptions as fallback
             error_msg = f"Error tidak terduga: {str(e)}"
             self.update_status(error_msg)
             messagebox.showerror("Error", error_msg)
-            # No log file is created when there's an error
 
 
 if __name__ == "__main__":
