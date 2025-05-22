@@ -24,12 +24,13 @@ jobs:
 
       - name: Extract version
         id: get_version
+        shell: cmd
         run: |
           for /f "tokens=2 delims== " %%v in ('findstr /b "VERSION" src\main.py') do (
             set "ver=%%~v"
+            set "ver=%ver:"=%"
+            echo version=%ver%>>"%GITHUB_OUTPUT%"
           )
-          set "ver=%ver:"=%"
-          echo "version=%ver%" >> %GITHUB_OUTPUT%
 
       - name: Build EXE
         run: |
