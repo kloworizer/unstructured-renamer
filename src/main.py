@@ -1,4 +1,4 @@
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 
 import os
 import shutil
@@ -236,7 +236,7 @@ class FileRenamerApp:
                     self.progress_var.set(progress)
 
                     file_ext = os.path.splitext(src_file)[1]
-                    new_filename = f"{folder_name}{file_count:03d}{file_ext}"
+                    new_filename = f"{folder_name}{file_count:04d}{file_ext}"
                     dst_file = os.path.join(output_folder, new_filename)
 
                     shutil.copy2(src_file, dst_file)
